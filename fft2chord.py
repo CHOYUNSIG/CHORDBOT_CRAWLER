@@ -118,20 +118,18 @@ def fft_animate(i):
     fft_line.set_data(freqx, y)
     return fft_line,
 
-def main():
-    p = pyaudio.PyAudio()
-    stream = p.open(format=pyaudio.paInt16, \
-                    channels=CHANNELS, \
-                    rate=RATE, \
-                    input=True, \
-                    frames_per_buffer=CHUNK) 
 
-    pygame.init()
+p = pyaudio.PyAudio()
+stream = p.open(format=pyaudio.paInt16, \
+                channels=CHANNELS, \
+                rate=RATE, \
+                input=True, \
+                frames_per_buffer=CHUNK) 
 
-    animation.FuncAnimation(fig, audio_animate, init_func=audio_init, frames=20, interval=10, blit=True)
-    animation.FuncAnimation(fig, fft_animate, init_func=fft_init, frames=20, interval=10, blit=True)
+pygame.init()
 
-    plt.show()
-    quit()
+animation.FuncAnimation(fig, audio_animate, init_func=audio_init, frames=20, interval=10, blit=True)
+animation.FuncAnimation(fig, fft_animate, init_func=fft_init, frames=20, interval=10, blit=True)
 
-if __name__ == '__main__' : main()
+plt.show()
+quit()
