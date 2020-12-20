@@ -4,10 +4,15 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pygame
 
+WIDTH = 720
+HEIGHT = 480
+
 pygame.init()
-screen = pygame.display.set_mode((720, 480))
+pygame.display.set_caption("chord input")
+
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
-font = pygame.font.Font('font/OpenSans-Light.ttf',30)
+font = pygame.font.Font('font/OpenSans-Light.ttf', 30)
 
 
 BLACK = (0, 0, 0)
@@ -28,7 +33,7 @@ for i in range(21) : mask[i] = False
 
 freqx = freqx[mask]
 
-fig, ax = plt.subplots(2,1)
+fig, ax = plt.subplots(2, 1, num='data')
 
 ax[0].set_title("audio signal")
 ax[0].grid(True)
@@ -81,29 +86,54 @@ def load_data():
 key = ['z','s','x','d','c', \
     'v','g','b','h','n','j','m', \
         ',','l','.',';','/', None]
-piano = ['C','C#','D','Eb','E', \
-    'F','F#','G','Ab','A','Bb','B',\
-        'C','C#','D','Eb','E', None]
-chord = ''
+piano = [font.render('C', True, WHITE), \
+        font.render('C#', True, WHITE), \
+        font.render('D', True, WHITE), \
+        font.render('Eb', True, WHITE), \
+        font.render('E', True, WHITE), \
+        font.render('F', True, WHITE), \
+        font.render('F#', True, WHITE), \
+        font.render('G', True, WHITE), \
+        font.render('Ab', True, WHITE), \
+        font.render('A', True, WHITE), \
+        font.render('Bb', True, WHITE), \
+        font.render('B', True, WHITE), \
+        font.render('Cm', True, WHITE), \
+        font.render('C#m', True, WHITE), \
+        font.render('Dm', True, WHITE), \
+        font.render('Ebm', True, WHITE), \
+        font.render('Em', True, WHITE), \
+        font.render('Fm', True, WHITE), \
+        font.render('F#m', True, WHITE), \
+        font.render('Gm', True, WHITE), \
+        font.render('Abm', True, WHITE), \
+        font.render('Am', True, WHITE), \
+        font.render('Bbm', True, WHITE), \
+        font.render('Bm', True, WHITE), \
+        font.render('', True, WHITE)]
 
 def pg_input():
-    global chord
+    chord = piano[24]
+
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            quit()
     
     pressed = [pygame.key.name(k)for k,v in enumerate(pygame.key.get_pressed()) if v]
+
     if len(pressed) == 2:
         for i in range(14):
             if key[i] in pressed:
                 if key[i+4] in pressed:
-                    chord = piano[i] + ' major'
+                    chord = piano[i%12]
                     break
                 elif key[i+3] in pressed:
-                    chord = piano[i] + ' minor'
+                    chord = piano[i%12+12]
                     break
-    else: chord = ''
 
     screen.fill(BLACK)
-    screen.blit(font.render(chord, True, WHITE), (100, 100))
-    pygame.display.update()
+    screen.blit(chord, (100, 100))
+    pygame.display.flip()
 
 
 def audio_animate(i):
@@ -127,8 +157,8 @@ stream = p.open(format=pyaudio.paInt16, \
                 input=True, \
                 frames_per_buffer=CHUNK) 
 
-animation.FuncAnimation(fig, audio_animate, init_func=audio_init, frames=20, interval=10, blit=True)
-animation.FuncAnimation(fig, fft_animate, init_func=fft_init, frames=20, interval=10, blit=True)
+animation.FuncAnimation(fig, audio_animate, init_func=audio_init, frames=200, interval=10, blit=True)
+animation.FuncAnimation(fig, fft_animate, init_func=fft_init, frames=200, interval=10, blit=True)
 
 plt.show()
 quit()
