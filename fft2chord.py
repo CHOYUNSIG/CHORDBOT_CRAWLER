@@ -4,17 +4,17 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pygame
 
-
+pygame.init()
 screen = pygame.display.set_mode((720, 480))
 clock = pygame.time.Clock()
-FPS = 60  # Frames per second.
+font = pygame.font.Font('font/OpenSans-Light.ttf',30)
+
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
-
 
 CHANNELS = 2
 CHUNK = 2**10
@@ -95,13 +95,14 @@ def pg_input():
             if key[i] in pressed:
                 if key[i+4] in pressed:
                     chord = piano[i] + ' major'
+                    break
                 elif key[i+3] in pressed:
                     chord = piano[i] + ' minor'
+                    break
     else: chord = ''
 
-    
-
     screen.fill(BLACK)
+    screen.blit(font.render(chord, True, WHITE), (100, 100))
     pygame.display.update()
 
 
@@ -125,8 +126,6 @@ stream = p.open(format=pyaudio.paInt16, \
                 rate=RATE, \
                 input=True, \
                 frames_per_buffer=CHUNK) 
-
-pygame.init()
 
 animation.FuncAnimation(fig, audio_animate, init_func=audio_init, frames=20, interval=10, blit=True)
 animation.FuncAnimation(fig, fft_animate, init_func=fft_init, frames=20, interval=10, blit=True)
