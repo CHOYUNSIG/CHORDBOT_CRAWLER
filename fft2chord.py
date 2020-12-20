@@ -88,10 +88,6 @@ chord = ''
 
 def pg_input():
     global chord
-
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            quit()
     
     pressed = [pygame.key.name(k)for k,v in enumerate(pygame.key.get_pressed()) if v]
     if len(pressed) == 2:
@@ -122,17 +118,20 @@ def fft_animate(i):
     fft_line.set_data(freqx, y)
     return fft_line,
 
-p = pyaudio.PyAudio()
-stream = p.open(format=pyaudio.paInt16, \
-                channels=CHANNELS, \
-                rate=RATE, \
-                input=True, \
-                frames_per_buffer=CHUNK) 
+def main():
+    p = pyaudio.PyAudio()
+    stream = p.open(format=pyaudio.paInt16, \
+                    channels=CHANNELS, \
+                    rate=RATE, \
+                    input=True, \
+                    frames_per_buffer=CHUNK) 
 
-pygame.init()
+    pygame.init()
 
-animation.FuncAnimation(fig, audio_animate, init_func=audio_init, frames=20, interval=10, blit=True)
-animation.FuncAnimation(fig, fft_animate, init_func=fft_init, frames=20, interval=10, blit=True)
+    animation.FuncAnimation(fig, audio_animate, init_func=audio_init, frames=20, interval=10, blit=True)
+    animation.FuncAnimation(fig, fft_animate, init_func=fft_init, frames=20, interval=10, blit=True)
 
-plt.show()
-quit()
+    plt.show()
+    quit()
+
+if __name__ == '__main__' : main()
