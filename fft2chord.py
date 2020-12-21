@@ -12,7 +12,8 @@ pygame.display.set_caption("chord input")
 
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 clock = pygame.time.Clock()
-font = pygame.font.Font('font/OpenSans-Light.ttf', 30)
+font50 = pygame.font.Font('com/font/OpenSans-Light.ttf', 50)
+font10 = pygame.font.Font('com/font/OpenSans-Light.ttf', 10)
 
 
 BLACK = (0, 0, 0)
@@ -26,10 +27,11 @@ CHUNK = 2**10
 RATE = 44100
 
 max_head = 1
+fft_data = None
 
 freqx = np.fft.fftfreq(n = RATE)*RATE
 mask = freqx > 0
-for i in range(21) : mask[i] = False
+for i in range(20) : mask[i] = False
 
 freqx = freqx[mask]
 
@@ -86,53 +88,38 @@ def load_data():
 key = ['z','s','x','d','c', \
     'v','g','b','h','n','j','m', \
         ',','l','.',';','/', None]
-piano = [font.render('C', True, WHITE), \
-        font.render('C#', True, WHITE), \
-        font.render('D', True, WHITE), \
-        font.render('Eb', True, WHITE), \
-        font.render('E', True, WHITE), \
-        font.render('F', True, WHITE), \
-        font.render('F#', True, WHITE), \
-        font.render('G', True, WHITE), \
-        font.render('Ab', True, WHITE), \
-        font.render('A', True, WHITE), \
-        font.render('Bb', True, WHITE), \
-        font.render('B', True, WHITE), \
-        font.render('Cm', True, WHITE), \
-        font.render('C#m', True, WHITE), \
-        font.render('Dm', True, WHITE), \
-        font.render('Ebm', True, WHITE), \
-        font.render('Em', True, WHITE), \
-        font.render('Fm', True, WHITE), \
-        font.render('F#m', True, WHITE), \
-        font.render('Gm', True, WHITE), \
-        font.render('Abm', True, WHITE), \
-        font.render('Am', True, WHITE), \
-        font.render('Bbm', True, WHITE), \
-        font.render('Bm', True, WHITE), \
-        font.render('', True, WHITE)]
+chord = ['C','C#','D','Eb','E', \
+    'F','F#','G','Ab','A','Bb','B', \
+        'Cm','C#m','Dm','Ebm','Em', \
+    'Fm','F#m','Gm','Abm','Am','Bbm','Bm']
+chord_img = [font50.render(i, True, WHITE) for i in chord]
+captuerd_img = font50.render('captured', True, WHITE)
+capture = False
 
 def pg_input():
-    chord = piano[24]
+    global capture
+    screen.fill(BLACK)
 
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             quit()
     
     pressed = [pygame.key.name(k)for k,v in enumerate(pygame.key.get_pressed()) if v]
-
-    if len(pressed) == 2:
-        for i in range(14):
-            if key[i] in pressed:
-                if key[i+4] in pressed:
-                    chord = piano[i%12]
-                    break
-                elif key[i+3] in pressed:
-                    chord = piano[i%12+12]
-                    break
-
-    screen.fill(BLACK)
-    screen.blit(chord, (100, 100))
+    for i in range(14):
+        if key[i] in pressed:
+            if key[i+4] in pressed:
+                screen.blit(chord_img[i%12], (100, 100))
+                if 'space' in pressed:
+                    screen.blit(captuerd_img, (200, 130))
+                    capture = True
+                break
+            elif key[i+3] in pressed:
+                screen.blit(chord_img[i%12+12], (100, 100))
+                if 'space' in pressed:
+                    screen.blit(captuerd_img, (200, 130))
+                    capture = True
+                break
+    
     pygame.display.flip()
 
 
@@ -146,6 +133,8 @@ def audio_animate(i):
 def fft_animate(i):
     y = abs(np.fft.fft(total_frames, n = RATE))
     y = (np.log10(y/2**9/(max_head))*10)[mask]
+    global fft_data
+    fft_data = y
     fft_line.set_data(freqx, y)
     return fft_line,
 
