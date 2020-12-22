@@ -43,9 +43,9 @@ stream = p.open(format=pyaudio.paInt16, \
 
 
 import numpy as np
-
 from scipy.fftpack import *
-
+import struct
+import csv
 import time
 
 
@@ -53,6 +53,9 @@ max_head = 1
 audio_data = None
 fft_data = None
 
+delay = 0
+with open("com/delaytick.dat", 'rb') as f:
+    delay, = struct.unpack('d', f.read())
 
 smplx = np.linspace(1, CHUNK, CHUNK)
 
@@ -89,6 +92,38 @@ fft_line, = ax[1].plot([], [], c='g', lw=0.5)
 plt.tight_layout()
 ####plot generation end
 
+red_dot = []
+
+class fft_capture():
+    def __init__(self, chord, test):
+        self.init_time = time.time()
+        self.chord = chord
+        self.test = test
+        self.end = False
+    
+    def process(self):
+        if time.time() - self.init_time >= delay:
+            self.end = True
+            if self.test:
+                pass
+            else:
+                with open("data/" + self.chord + ".csv", 'a', encoding='utf-8', newline='') as f:
+                    csv.writer(f).writerow(fft_data)
+
+    def __del__(self):
+        global red_dot
+        red_dot.append(time.time())
+
+fft_captures = []
+
+def capture_manager():
+    for fftcpt in fft_captures:
+        fftcpt.process()
+        if fftcpt.end:
+            fftcpt.__del__()
+            fft_captures.remove(fftcpt)
+
+
 thr_time = time.time()
 thr_accel = None
 
@@ -120,13 +155,16 @@ chord = ['C','C#','D','Eb','E', \
 img_chord = [font50.render(i, True, WHITE) for i in chord]
 img_captured = font20.render('captured', True, WHITE)
 img_movemode = font20.render('Window move mode (Q)', True, WHITE)
+img_dsetmode = font20.render('Delay set mode (W)', True, WHITE)
 
 pre_pressed = []
 move_mode = True
+dset_mode = False
 
 def pg_input():
-    global pre_pressed, move_mode
+    global fft_captures, pre_pressed, move_mode, dset_mode, red_dot, delay
     clock.tick(FPS)
+    current = time.time()
     screen.fill(BLACK)
 
     if move_mode:
@@ -146,18 +184,43 @@ def pg_input():
     if move_mode:
         pass
     else:
+        if 'w' in pressed and 'w' not in pre_pressed:
+            dset_mode = not dset_mode
+        
+        if dset_mode:
+            screen.blit(img_dsetmode, (10, HEIGHT_PG-50))
+            if 'left' in pressed and 'right' not in pressed:
+                delay -= 0.01
+                screen.blit(font20.render('delay : %.2f'%delay, True, WHITE), (10, HEIGHT_PG-30))    
+                with open("com/delaytick.dat", "wb") as f:
+                    f.write(struct.pack("d", delay))
+            if 'right' in pressed and 'left' not in pressed:
+                delay += 0.01
+                screen.blit(font20.render('delay : %.2f'%delay, True, WHITE), (10, HEIGHT_PG-30))    
+                with open("com/delaytick.dat", "wb") as f:
+                    f.write(struct.pack("d", delay))
+
         for i in range(14):
             if key[i] in pressed:
                 if key[i+4] in pressed:
                     screen.blit(img_chord[i%12], (70, 30))
                     if 'space' in pressed:
-                        screen.blit(img_captured, (170, 70))
+                        screen.blit(img_captured, (180, 70))
+                        fft_captures.append(fft_capture(chord[i%12], dset_mode))
                     break
                 elif key[i+3] in pressed:
                     screen.blit(img_chord[i%12+12], (70, 30))
                     if 'space' in pressed:
-                        screen.blit(img_captured, (170, 70))
+                        screen.blit(img_captured, (180, 70))
+                        fft_captures.append(fft_capture(chord[i%12+12], dset_mode))
                     break
+    
+    for i in red_dot:
+        if current - i >= 0.1:
+            red_dot.remove(i)
+    
+    if len(red_dot) > 0:
+        pygame.draw.circle(screen, RED, (WIDTH_PG-20, 20), 10)
     
     pre_pressed = pressed
     pygame.display.flip()
@@ -173,6 +236,7 @@ def fft_init():
 
 def audio_animate(i):
     load_data()
+    capture_manager()
     audio_line.set_data(smplx, audio_data)
     return audio_line,
 
