@@ -130,7 +130,7 @@ thr_accel = None
 def load_data():
     global audio_data, fft_data, max_head, thr_time, thr_accel
     audio_data = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
-    fft_data = np.log10(abs(fft(audio_data, n = RATE))/(max_head * CHUNK)*2)[mask]*20
+    fft_data = np.round(np.log10(abs(fft(audio_data, n = RATE))/(max_head * CHUNK)*2)[mask]*20, 4)
 
     temp_head = np.max(abs(audio_data))
     if max_head <= temp_head:
@@ -204,17 +204,17 @@ def pg_input():
             if key[i] in pressed:
                 if key[i+4] in pressed:
                     screen.blit(img_chord[i%12], (70, 30))
-                    if 'space' in pressed:
+                    if 'return' in pressed and 'return' not in pre_pressed:
                         screen.blit(img_captured, (180, 70))
                         fft_captures.append(fft_capture(chord[i%12], dset_mode))
                     break
                 elif key[i+3] in pressed:
                     screen.blit(img_chord[i%12+12], (70, 30))
-                    if 'space' in pressed:
+                    if 'return' in pressed and 'return' not in pre_pressed:
                         screen.blit(img_captured, (180, 70))
                         fft_captures.append(fft_capture(chord[i%12+12], dset_mode))
                     break
-    
+
     for i in red_dot:
         if current - i >= 0.1:
             red_dot.remove(i)
