@@ -38,6 +38,7 @@ x_data = x_data[s]
 y_data = y_data[s]
 
 print(x_data.shape[0], 'data confirmed')
+
 # x와 y 데이터가 들어갈 형상 선언
 layer0 = tf.compat.v1.placeholder(tf.float32, [None, RATE//2-20], name='in')
 
@@ -50,26 +51,19 @@ layer1 = tf.sigmoid(tf.add(tf.matmul(layer0, w1), b1))  # 순전파 오퍼레이
 
 w2 = tf.Variable(tf.random.uniform([24, 24]))
 b2 = tf.Variable(tf.zeros([24]))
-layer2 = tf.nn.softmax(tf.sigmoid(tf.add(tf.matmul(layer1, w2), b2)))  # 순전파 오퍼레이션
-
-layer2 = tf.identity(layer2, "out")
+layer2 = tf.nn.softmax(tf.sigmoid(tf.add(tf.matmul(layer1, w2), b2)), name="out")  # 순전파 오퍼레이션
 
 cost = tf.reduce_mean(-tf.reduce_sum(tf.math.log(layer2) * Y, axis = 1)) # 손실함수
 optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=0.01) # 옵티마이저
 train_op = optimizer.minimize(cost) # 학습 오퍼레이션
 
-# 데이터를 가지고 학습 - 텐서플로우 세션(텐서플로우의 모든 연산은 세션 안에서 실행된다)
-print('learning')
 sess = tf.compat.v1.Session()
-saver = tf.compat.v1.train.Saver(tf.compat.v1.global_variables())
+sess.run(tf.compat.v1.global_variables_initializer())
 
-ckpt = tf.train.get_checkpoint_state('model/model.ckpt')
-if ckpt and tf.train.checkpoint_exists(ckpt.model_checkpoint_path):
-    saver.restore(sess, ckpt.model_checkpoint_path)
-else:
-    sess.run(tf.compat.v1.global_variables_initializer())
+saver = tf.compat.v1.train.Saver()
 
-for step in range(100):
+print('learning...')
+for step in range(2):
     load_time = time.time()
     print('step', step+1, '...', end='')
     sess.run(train_op, feed_dict={layer0: x_data, Y: y_data})

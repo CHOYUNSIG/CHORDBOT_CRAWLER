@@ -1,3 +1,4 @@
+import numpy as np
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
@@ -5,7 +6,13 @@ RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
 
-CHUNK = 2**10
+GRADIENT = []
+for i in range(256):
+    GRADIENT.append((255-i, i, 0))
+for i in range(256):
+    GRADIENT.append((0, 255-i, i))
+
+CHUNK = 2**11
 RATE = 44100
 
 WIDTH_PG = 640
@@ -17,6 +24,11 @@ FPS = 60
 
 THR_ATK_INIT = 10
 THR_ATK = 5
+
+FREQ = np.array([32.7032, 34.6478, 36.7081, 38.8909, 41.2034, \
+    43.6535, 46.2493, 48.9994, 51.9130, 55.0000, 58.2705, 61.7354])
+for i in range(7):
+    FREQ = np.append(FREQ, FREQ[i*12:(i+1)*12]*2)
 
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -38,7 +50,6 @@ stream = p.open(format=pyaudio.paInt16, \
                 input=True, \
                 frames_per_buffer=CHUNK) 
 
-import numpy as np
 from scipy.fftpack import *
 import struct
 import csv
@@ -47,6 +58,7 @@ import time
 max_head = 1
 audio_data = None
 fft_data = None
+piano_data = np.array([0]*96)
 
 delay = 0
 with open("com/delaytick.dat", 'rb') as f:
@@ -79,9 +91,9 @@ ax[1].set_xticks([10, 20, 30, 40, 50, 60, 70, 80, 90, \
     100, 200, 300, 400, 500, 600, 700, 800, 900, \
     1000, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, \
     10000, 15000, 20000])
-ax[1].set_yticks(range(-96, 1, 12))
+ax[1].set_yticks(range(0, 501, 100))
 ax[1].set_xlim((20, RATE/2))
-ax[1].set_ylim((-96, 0))
+ax[1].set_ylim((0, 512))
 fft_line, = ax[1].plot([], [], c='g', lw=0.5)
 
 plt.tight_layout()
@@ -123,9 +135,8 @@ thr_time = time.time()
 thr_accel = None
 
 def load_data():
-    global audio_data, fft_data, max_head, thr_time, thr_accel
+    global audio_data, fft_data, piano_data, max_head, thr_time, thr_accel
     audio_data = np.frombuffer(stream.read(CHUNK), dtype=np.int16)
-    fft_data = np.round(np.log10(abs(fft(audio_data, n = RATE))/(max_head * CHUNK)*2)[mask]*20, 4)
 
     temp_head = np.max(abs(audio_data))
     if max_head <= temp_head:
@@ -136,7 +147,11 @@ def load_data():
         if 0 < interval_time < THR_ATK:
             max_head = max(int(thr_accel * (1 - interval_time / THR_ATK)), temp_head)
 
-    ax[0].set_ylim((-max_head, max_head))
+    fft_data = (abs(fft(audio_data, n = RATE)[mask])/(max_head * CHUNK)*2*1024).astype(np.int32)
+
+    for i in range(96):
+        piano_data[i] = int(np.floor((fft_data[int(np.floor(FREQ[i]))-21]*(1 - (FREQ[i] - np.floor(FREQ[i]))) + \
+            fft_data[int(np.ceil(FREQ[i]))-21]*(FREQ[i] - np.floor(FREQ[i])))/2))
 
 
 key = ['z','s','x','d','c', \
@@ -152,6 +167,7 @@ img_captured = font20.render('captured', True, WHITE)
 img_movemode = font20.render('Window move mode (Q)', True, WHITE)
 img_dsetmode = font20.render('Delay set mode (W)', True, WHITE)
 
+piano_white_key = [1, 0, 1, 0, 1, 1, 0, 1, 0, 1, 0, 1]
 pre_pressed = []
 move_mode = True
 dset_mode = False
@@ -199,13 +215,13 @@ def pg_input():
             if key[i] in pressed:
                 if key[i+4] in pressed:
                     screen.blit(img_chord[i%12], (70, 30))
-                    if 'return' in pressed and 'return' not in pre_pressed:
+                    if 'return' in pressed:
                         screen.blit(img_captured, (180, 70))
                         fft_captures.append(fft_capture(chord[i%12], dset_mode))
                     break
                 elif key[i+3] in pressed:
                     screen.blit(img_chord[i%12+12], (70, 30))
-                    if 'return' in pressed and 'return' not in pre_pressed:
+                    if 'return' in pressed:
                         screen.blit(img_captured, (180, 70))
                         fft_captures.append(fft_capture(chord[i%12+12], dset_mode))
                     break
@@ -216,6 +232,21 @@ def pg_input():
     
     if len(red_dot) > 0:
         pygame.draw.circle(screen, RED, (WIDTH_PG-20, 20), 10)
+    
+    white, black = 0, 0
+    for i in range(96):
+        if piano_white_key[i%12] == 1:
+            color = max(int((128 - piano_data[i])/128*511), 0)
+            pygame.draw.rect(screen, GRADIENT[color], [10 + 9*white, 400, 7, 30])
+            white += 1
+    for i in range(96):
+        if piano_white_key[i%12] == 0:
+            color = max(int((128 - piano_data[i])/128*511), 0)
+            pygame.draw.rect(screen, BLACK, [10 + 4+9*black, 397, 8, 22])
+            pygame.draw.rect(screen, GRADIENT[color], [10 + 5+9*black, 397, 6, 21])
+            black += 1
+        elif i%12 == 4 or i%12 == 11:
+            black += 1
     
     pre_pressed = pressed
     pygame.display.flip()
@@ -232,11 +263,12 @@ def fft_init():
 def audio_animate(i):
     load_data()
     capture_manager()
+    pg_input()
     audio_line.set_data(smplx, audio_data)
+    ax[0].set_ylim((-max_head, max_head))
     return audio_line,
 
 def fft_animate(i):
-    pg_input()
     fft_line.set_data(freqx, fft_data)
     return fft_line,
 
