@@ -19,9 +19,7 @@ THR_ATK_INIT = 10
 THR_ATK = 5
 
 import matplotlib.pyplot as plt
-import matplotlib.backends.backend_agg as agg
 import matplotlib.animation as animation
-
 
 import pygame
 pygame.init()
@@ -32,7 +30,6 @@ clock = pygame.time.Clock()
 font50 = pygame.font.Font('com/font/OpenSans-Light.ttf', 50)
 font20 = pygame.font.Font('com/font/OpenSans-Light.ttf', 20)
 
-
 import pyaudio
 p = pyaudio.PyAudio()
 stream = p.open(format=pyaudio.paInt16, \
@@ -41,13 +38,11 @@ stream = p.open(format=pyaudio.paInt16, \
                 input=True, \
                 frames_per_buffer=CHUNK) 
 
-
 import numpy as np
 from scipy.fftpack import *
 import struct
 import csv
 import time
-
 
 max_head = 1
 audio_data = None
