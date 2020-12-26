@@ -2,26 +2,21 @@ import tensorflow as tf
 import numpy as np
 import csv
 import time
+from constants import *
+
 
 total_time = time.time()
 
-RATE = 44100
 
-chords = ['C','C#','D','Eb','E', \
-    'F','F#','G','Ab','A','Bb','B', \
-        'Cm','C#m','Dm','Ebm','Em', \
-    'Fm','F#m','Gm','Abm','Am','Bbm','Bm']
-
-# x, y 데이터(x는 feature, y는 label)
+print('data loading')
 
 x_data = np.array([])
 y_data = np.array([], dtype=np.int16)
 
-print('data loading')
 for i in range(24):
     load_time = time.time()
-    print(chords[i]+' loaded...', end=' ')
-    with open('data/'+chords[i]+'.csv', 'r') as f:
+    print(CHORD[i]+' loaded...', end=' ')
+    with open('data/'+CHORD[i]+'.csv', 'r') as f:
         rdr = csv.reader(f)
         for fft in rdr:
             x_data = np.append(x_data, list(map(float, fft)))
@@ -39,23 +34,23 @@ y_data = y_data[s]
 
 print(x_data.shape[0], 'data confirmed')
 
-# x와 y 데이터가 들어갈 형상 선언
+
+
 layer0 = tf.compat.v1.placeholder(tf.float32, [None, RATE//2-20], name='in')
 
 Y = tf.compat.v1.placeholder(tf.float32, [None, 24])
 
-# 학습될 가중치와(W) 편향(b)
 w1 = tf.Variable(tf.random.uniform([RATE//2-20, 24]))
 b1 = tf.Variable(tf.zeros([24]))
-layer1 = tf.sigmoid(tf.add(tf.matmul(layer0, w1), b1))  # 순전파 오퍼레이션
+layer1 = tf.sigmoid(tf.add(tf.matmul(layer0, w1), b1))
 
 w2 = tf.Variable(tf.random.uniform([24, 24]))
 b2 = tf.Variable(tf.zeros([24]))
-layer2 = tf.nn.softmax(tf.sigmoid(tf.add(tf.matmul(layer1, w2), b2)), name="out")  # 순전파 오퍼레이션
+layer2 = tf.nn.softmax(tf.sigmoid(tf.add(tf.matmul(layer1, w2), b2)), name="out")
 
-cost = tf.reduce_mean(-tf.reduce_sum(tf.math.log(layer2) * Y, axis = 1)) # 손실함수
-optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=0.01) # 옵티마이저
-train_op = optimizer.minimize(cost) # 학습 오퍼레이션
+cost = tf.reduce_mean(-tf.reduce_sum(tf.math.log(layer2) * Y, axis = 1))
+optimizer = tf.compat.v1.train.GradientDescentOptimizer(learning_rate=0.01)
+train_op = optimizer.minimize(cost)
 
 sess = tf.compat.v1.Session()
 sess.run(tf.compat.v1.global_variables_initializer())
@@ -69,11 +64,12 @@ for step in range(2):
     sess.run(train_op, feed_dict={layer0: x_data, Y: y_data})
     print(np.round(time.time() - load_time, 2), 'sec')
 
-# 검증
-prediction = tf.argmax(layer2, axis=1) # 학습된 모델에 대한 예측값
-real = tf.argmax(Y, axis=1) # 실제 값
+prediction = tf.argmax(layer2, axis=1)
+real = tf.argmax(Y, axis=1)
 is_correct = tf.equal(prediction, real)
 accuracy = tf.reduce_mean(tf.cast(is_correct, tf.float32))
+
+
 print('accuracy: %2f' % sess.run(accuracy*100, feed_dict={layer0: x_data, Y: y_data}))
 print('total', np.round(time.time() - total_time, 2), 'sec')
 
