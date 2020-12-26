@@ -1,19 +1,24 @@
 import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.animation as animation
+import pygame
+import pyaudio
+from scipy.fftpack import *
+import struct
+import csv
+import time
+from constants import *
 
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 RED = (255, 0, 0)
 GREEN = (0, 255, 0)
 BLUE = (0, 0, 255)
-
 GRADIENT = []
 for i in range(256):
     GRADIENT.append((255-i, i, 0))
 for i in range(256):
     GRADIENT.append((0, 255-i, i))
-
-CHUNK = 2**11
-RATE = 44100
 
 WIDTH_PG = 640
 HEIGHT_PG = 480
@@ -25,24 +30,15 @@ FPS = 60
 THR_ATK_INIT = 10
 THR_ATK = 5
 
-FREQ = np.array([32.7032, 34.6478, 36.7081, 38.8909, 41.2034, \
-    43.6535, 46.2493, 48.9994, 51.9130, 55.0000, 58.2705, 61.7354])
-for i in range(7):
-    FREQ = np.append(FREQ, FREQ[i*12:(i+1)*12]*2)
 
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
-
-import pygame
 pygame.init()
 pygame.display.set_caption("chord input")
-
 screen = pygame.display.set_mode((WIDTH_PG, HEIGHT_PG))
 clock = pygame.time.Clock()
 font50 = pygame.font.Font('com/font/OpenSans-Light.ttf', 50)
 font20 = pygame.font.Font('com/font/OpenSans-Light.ttf', 20)
 
-import pyaudio
+
 p = pyaudio.PyAudio()
 stream = p.open(format=pyaudio.paInt16, \
                 channels=1, \
@@ -50,10 +46,6 @@ stream = p.open(format=pyaudio.paInt16, \
                 input=True, \
                 frames_per_buffer=CHUNK) 
 
-from scipy.fftpack import *
-import struct
-import csv
-import time
 
 max_head = 1
 audio_data = None
@@ -64,6 +56,8 @@ delay = 0
 with open("com/delaytick.dat", 'rb') as f:
     delay, = struct.unpack('d', f.read())
 
+
+####plot generation start
 smplx = np.linspace(1, CHUNK, CHUNK)
 
 freqx = fftfreq(n = RATE)*RATE
@@ -71,7 +65,6 @@ mask = freqx > 0
 for i in range(20) : mask[i] = False
 freqx = freqx[mask]
 
-####plot generation start
 fig, ax = plt.subplots(2, 1, num='data')
 fig.set_figwidth(WIDTH_MP/fig.dpi)
 fig.set_figheight(HEIGHT_MP/fig.dpi)
@@ -98,6 +91,9 @@ fft_line, = ax[1].plot([], [], c='g', lw=0.5)
 
 plt.tight_layout()
 ####plot generation end
+
+
+
 
 red_dot = []
 
@@ -131,6 +127,9 @@ def capture_manager():
             fft_captures.remove(fftcpt)
 
 
+
+
+
 thr_time = time.time()
 thr_accel = None
 
@@ -150,19 +149,18 @@ def load_data():
     fft_data = (abs(fft(audio_data, n = RATE)[mask])/(max_head * CHUNK)*2*1024).astype(np.int32)
 
     for i in range(96):
-        piano_data[i] = int(np.floor((fft_data[int(np.floor(FREQ[i]))-21]*(1 - (FREQ[i] - np.floor(FREQ[i]))) + \
-            fft_data[int(np.ceil(FREQ[i]))-21]*(FREQ[i] - np.floor(FREQ[i])))/2))
+        piano_data[i] = fft_data[int(np.floor(FREQ[i]))-21]*(1 - (FREQ[i] - np.floor(FREQ[i]))) + \
+            fft_data[int(np.ceil(FREQ[i]))-21]*(FREQ[i] - np.floor(FREQ[i]))
+
+
+
 
 
 key = ['z','s','x','d','c', \
     'v','g','b','h','n','j','m', \
         ',','l','.',';','/', None]
-chord = ['C','C#','D','Eb','E', \
-    'F','F#','G','Ab','A','Bb','B', \
-        'Cm','C#m','Dm','Ebm','Em', \
-    'Fm','F#m','Gm','Abm','Am','Bbm','Bm']
 
-img_chord = [font50.render(i, True, WHITE) for i in chord]
+img_chord = [font50.render(i, True, WHITE) for i in CHORD]
 img_captured = font20.render('captured', True, WHITE)
 img_movemode = font20.render('Window move mode (Q)', True, WHITE)
 img_dsetmode = font20.render('Delay set mode (W)', True, WHITE)
@@ -186,18 +184,16 @@ def pg_input():
     
     pressed = [pygame.key.name(k) for k,v in enumerate(pygame.key.get_pressed()) if v]
     
-    if 'q' in pressed and 'q' not in pre_pressed:
+    if 'q' in pressed and 'q' not in pre_pressed and not dset_mode:
         move_mode = not move_mode
-    
+    if 'w' in pressed and 'w' not in pre_pressed and not move_mode:
+        dset_mode = not dset_mode
     if 'escape' in pressed:
         quit()
 
     if move_mode:
         pass
     else:
-        if 'w' in pressed and 'w' not in pre_pressed:
-            dset_mode = not dset_mode
-        
         if dset_mode:
             screen.blit(img_dsetmode, (10, HEIGHT_PG-50))
             if 'left' in pressed and 'right' not in pressed:
@@ -217,39 +213,38 @@ def pg_input():
                     screen.blit(img_chord[i%12], (70, 30))
                     if 'return' in pressed:
                         screen.blit(img_captured, (180, 70))
-                        fft_captures.append(fft_capture(chord[i%12], dset_mode))
+                        fft_captures.append(fft_capture(CHORD[i%12], dset_mode))
                     break
                 elif key[i+3] in pressed:
                     screen.blit(img_chord[i%12+12], (70, 30))
                     if 'return' in pressed:
                         screen.blit(img_captured, (180, 70))
-                        fft_captures.append(fft_capture(chord[i%12+12], dset_mode))
+                        fft_captures.append(fft_capture(CHORD[i%12+12], dset_mode))
                     break
 
     for i in red_dot:
         if current - i >= 0.1:
             red_dot.remove(i)
-    
     if len(red_dot) > 0:
         pygame.draw.circle(screen, RED, (WIDTH_PG-20, 20), 10)
     
     white, black = 0, 0
     for i in range(96):
         if piano_white_key[i%12] == 1:
-            color = max(int((128 - piano_data[i])/128*511), 0)
-            pygame.draw.rect(screen, GRADIENT[color], [10 + 9*white, 400, 7, 30])
+            pygame.draw.rect(screen, GRADIENT[max(int((256 - piano_data[i])/256*511), 0)], [10 + 11*white, HEIGHT_PG-80, 9, 30])
             white += 1
     for i in range(96):
         if piano_white_key[i%12] == 0:
-            color = max(int((128 - piano_data[i])/128*511), 0)
-            pygame.draw.rect(screen, BLACK, [10 + 4+9*black, 397, 8, 22])
-            pygame.draw.rect(screen, GRADIENT[color], [10 + 5+9*black, 397, 6, 21])
+            pygame.draw.rect(screen, BLACK, [10 + 5+11*black, HEIGHT_PG-83, 10, 22])
+            pygame.draw.rect(screen, GRADIENT[max(int((256 - piano_data[i])/256*511), 0)], [10 + 6+11*black, HEIGHT_PG-83, 8, 21])
             black += 1
         elif i%12 == 4 or i%12 == 11:
             black += 1
     
     pre_pressed = pressed
     pygame.display.flip()
+
+
 
 
 def audio_init():
